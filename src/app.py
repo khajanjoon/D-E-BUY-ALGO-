@@ -304,55 +304,62 @@ def trade_logic(sym):
 def dashboard_loop():
     while True:
         time.sleep(5)
-        lines = [
-            "",
-            "=" * 80,
-            "🔥  DELTA LONG ENGINE — LIVE DASHBOARD  🔥",
-            "=" * 80,
-        ]
-        total_pnl = 0
-        total_exp = 0
+
+        print("\n" * 2)
+        print("=" * 80)
+        print("🔥 DELTA LONG ENGINE - LIVE DASHBOARD 🔥")
+        print("=" * 80)
+
+        total_unrealized = 0
+        total_exposure = 0
 
         with lock:
             for sym in SYMBOLS:
-                price = prices.get(sym)
-                pos   = positions.get(sym)
 
-                lines.append(f"\n  {sym}")
-                lines.append(f"  Mark Price   : {price}")
+                price = prices.get(sym)
+                pos = positions.get(sym)
+
+                print("\n------------------------------------------------------------")
+                print(f"SYMBOL: {sym}")
+                print("------------------------------------------------------------")
+                print(f"Mark Price        : {price}")
 
                 if not pos or not price:
-                    lines.append("  Position     : None")
+                    print("Position          : None")
                     continue
 
-                size     = float(pos["size"])
-                entry    = float(pos["entry_price"])
-                unreal   = (price - entry) * abs(size)
+                size = float(pos["size"])
+                entry = float(pos["entry_price"])
+
+                unrealized = (price - entry) * abs(size)
                 exposure = abs(size) * price
+
+                lowest_sell = get_lowest_open_sell(sym)
+                trigger = None
+
+                if lowest_sell:
+                    trigger = round(lowest_sell * (1 - DROP_PERCENT / 100), 4)
+
                 tp_price = round(entry * (1 + TP_PERCENT / 100), 4)
-                low_sell = get_lowest_open_sell(sym)
-                trigger  = round(low_sell * (1 - DROP_PERCENT / 100), 4) if low_sell else None
 
-                lines += [
-                    f"  Size         : {size}",
-                    f"  Entry        : {entry}",
-                    f"  Take Profit  : {tp_price}",
-                    f"  Unrealized   : {round(unreal, 4)}",
-                    f"  Exposure     : {round(exposure, 4)}",
-                    f"  Lowest TP    : {low_sell}",
-                    f"  Next Trigger : {trigger}",
-                ]
-                total_pnl += unreal
-                total_exp += exposure
+                print(f"Direction         : LONG")
+                print(f"Position Size     : {size}")
+                print(f"Entry Price       : {entry}")
+                print(f"Take Profit       : {tp_price}")
+                print(f"Unrealized PnL    : {round(unrealized,4)}")
+                print(f"Current Exposure  : {round(exposure,4)}")
+                print(f"Lowest SELL TP    : {lowest_sell}")
+                print(f"Next Trigger      : {trigger}")
 
-        lines += [
-            "",
-            "─" * 80,
-            f"  Total Unrealized PnL : {round(total_pnl, 4)}",
-            f"  Total Exposure       : {round(total_exp, 4)}",
-            "=" * 80,
-        ]
-        print("\n".join(lines))
+                total_unrealized += unrealized
+                total_exposure += exposure
+
+        print("\n============================================================")
+        print("PORTFOLIO SUMMARY")
+        print("============================================================")
+        print(f"Total Unrealized PnL : {round(total_unrealized,4)}")
+        print(f"Total Exposure       : {round(total_exposure,4)}")
+        print("=" * 80)
 
 # ================= WEBSOCKET =================
 def on_open(ws):
